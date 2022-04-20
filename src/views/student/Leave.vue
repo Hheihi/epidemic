@@ -5,7 +5,13 @@
         <a-button type="primary" @click="report()">填写请假申请</a-button>
       </template>
     </CustomPageHeader>
-    <a-table :columns="columns" :data-source="data">
+    <a-table
+      :columns="columns"
+      :pagination="false"
+      :loading="loading"
+      :data-source="data"
+      rowKey="id"
+    >
       <template slot="result" slot-scope="text, row">
         <a-tag color="red" v-if="getStatus(row) === 'refuse'">拒绝</a-tag>
         <a-tag color="green" v-if="getStatus(row) === 'agree'">同意</a-tag>
@@ -46,56 +52,66 @@
         </a-form-model-item>
       </a-form-model>
     </a-modal>
+    <CustomPagination
+      @change="changePage"
+      :page="page"
+      :total="total"
+      :pageSize="pageSize"
+    />
   </div>
 </template>
 
 <script>
 import CustomPageHeader from "@/components/CustomPageHeader";
-import { LEAVE_COLUMNS ,LEAVE_RULES} from "@/columns/student-columns/leave-columns";
-const data = [
-  {
-    key: "1",
-    time: "2021-10-8",
-    leaveTime: "2021-10-8——2021-10-10",
-    reson: "回家",
-    result: 1,
-  },
-  {
-    key: "2",
-    time: "2021-10-8",
-    leaveTime: "2021-10-8——2021-10-10",
-    reson: "回家",
-    result: 2,
-  },
-  {
-    key: "3",
-    time: "2021-10-8",
-    leaveTime: "2021-10-8——2021-10-10",
-    reson: "回家",
-    result: 3,
-  },
-];
+import {
+  LEAVE_COLUMNS,
+  LEAVE_RULES,
+} from "@/columns/student-columns/leave-columns";
+import { LeaveApi } from "@/api";
+import CustomPagination from "@/components/CustomPagination";
+import moment from "moment";
 export default {
   name: "leave",
   components: {
     CustomPageHeader,
+    CustomPagination,
   },
   data() {
     return {
-      data: data,
+      data: [],
       columns: LEAVE_COLUMNS,
       reportVisible: false,
-      rules:LEAVE_RULES,
+      rules: LEAVE_RULES,
       form: {
-        dateStart: '',
-        dateEnd: '',
+        dateStart: "",
+        dateEnd: "",
         desc: "",
       },
+      page: 1,
+      total: 0,
+      pageSize: 5,
+      loading: false,
     };
   },
+  created() {
+    this.getLeaveInfo();
+  },
   methods: {
+    async getLeaveInfo() {
+      this.loading = true;
+      const { data } = await LeaveApi.getLeaveInfoById({
+        sid: JSON.parse(sessionStorage.getItem("id")),
+        page: this.page,
+        size: this.pageSize,
+      });
+      if (data.code === 200) {
+        this.data = data.data;
+        this.total = data.total;
+        this.loading = false;
+      }
+    },
     report() {
-        this.reportVisible = true
+      this.reportVisible = true;
     },
     getStatus({ result }) {
       const state = {
@@ -106,15 +122,35 @@ export default {
       return state[result];
     },
     submitReport() {
-      this.$refs.ruleForm.validate((valid) => {
+      this.$refs.ruleForm.validate(async (valid) => {
         if (valid) {
           console.log(this.form);
-          this.reportVisible = false
+          const { data } = await LeaveApi.insertLeaveInfo({
+            sid: JSON.parse(sessionStorage.getItem("id")),
+            create_time: moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
+            start_time: moment(this.form.dateStart._d).format(
+              "YYYY-MM-DD HH:mm:ss"
+            ),
+            end_time: moment(this.form.dateEnd._d).format(
+              "YYYY-MM-DD HH:mm:ss"
+            ),
+            reson: this.form.desc,
+          });
+          if (data.code === 200) {
+            this.reportVisible = false;
+            this.$message.success(data.msg);
+            this.getLeaveInfo()
+            this.$refs.ruleForm.resetFields()
+          }
         } else {
-          console.log("error submit!!");
           return false;
         }
       });
+    },
+    changePage(page, size) {
+      this.page = page;
+      this.pageSize = size;
+      this.getLeaveInfo();
     },
     hideReport() {
       this.reportVisible = false;

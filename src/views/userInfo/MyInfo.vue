@@ -1,7 +1,12 @@
 <template>
   <div>
     <!-- 个人信息 -->
-    <a-table :columns="columns" :data-source="data" :pagination="false">
+    <a-table
+      :columns="columns"
+      :data-source="data"
+      :pagination="false"
+      rowKey="id"
+    >
       <template slot="sex" slot-scope="text, row">
         <a-tag color="blue" v-if="getSex(row) === 'male'">男</a-tag>
         <a-tag color="green" v-if="getSex(row) === 'famale'">女</a-tag>
@@ -13,30 +18,44 @@
       </template>
     </a-table>
     <!-- 修改头像 -->
-    <h1>修改头像 修改密码 未做</h1>
+    <div>
+      <template>
+        <ResourceChoice
+          media="picture"
+          :size="[335, 188.4375]"
+          :ratio="ratio"
+          v-model="form.image"
+        />
+      </template>
+    </div>
   </div>
 </template>
 
 <script>
-const data = [
-  {
-    key: "1",
-    name: "John Brown",
-    college: "传媒技术学院",
-    major: "软件工程",
-    sex: 1,
-    native: "湖北省武汉市江夏区武汉传媒学院",
-    identity: 1,
-  },
-];
 import { MYINFO_COLUMNS } from "@/columns/userInfo-columns/myInfo-columns";
+import { UserInfoApi } from "@/api/index";
+import ResourceChoice from "@/components/ResourceChoice.vue";
 export default {
   name: "MyInfo",
   data() {
     return {
-      data: data,
+      data: null,
       columns: MYINFO_COLUMNS,
+      form:{
+        image:''
+      },
+      ratio: [16, 9],
     };
+  },
+  components: {
+    ResourceChoice,
+  },
+  created() {
+    const id = sessionStorage.getItem("id");
+    UserInfoApi.getUserInfo({ id: id }).then((result) => {
+      console.log(result);
+      this.data = result.data.data;
+    });
   },
   methods: {
     getSex({ sex }) {

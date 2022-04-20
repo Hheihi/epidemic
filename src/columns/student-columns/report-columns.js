@@ -1,29 +1,41 @@
 export const REPORT_COLUMNS = [{
-        title: "姓名",
-        dataIndex: 'name',
-        key: 'name',
-    },
-    {
-        title: '班级',
-        dataIndex: 'class',
-        key: 'class',
-    },
-    {
-        title: '是否发热',
-        dataIndex: 'hot',
-        key: 'hot',
-        scopedSlots: { customRender: 'hot' }
-    },
-    {
-        title: '上报时间',
-        dataIndex: 'time',
-        key: 'time',
-    },
-    {
-        title: '操作',
-        key: 'action',
-        scopedSlots: { customRender: 'action' },
-    },
+    title: "姓名",
+    dataIndex: 'name',
+    key: 'name',
+},
+{
+    title: '班级',
+    dataIndex: 'class_info',
+    key: 'class_info',
+},
+{
+    title: '是否发热',
+    dataIndex: 'fever',
+    key: 'fever',
+    scopedSlots: { customRender: 'fever' }
+},
+{
+    title: "核酸检测结果",
+    dataIndex: "acid",
+    key: "acid",
+    scopedSlots: { customRender: 'acid' }
+},
+{
+    title: '上报时间',
+    dataIndex: 'create_time',
+    key: 'create_time',
+},
+{
+    title: '健康码照片',
+    dataIndex: 'health_img',
+    key: 'health_img',
+    scopedSlots: { customRender: 'health_img' },
+},
+{
+    title: '操作',
+    key: 'action',
+    scopedSlots: { customRender: 'action' },
+},
 ];
 
 export const REPORT_RULES = {

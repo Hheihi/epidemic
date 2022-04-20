@@ -5,19 +5,30 @@
         <a-button type="primary" @click="report()">填写通知</a-button>
       </template>
     </CustomPageHeader>
-    <a-table :columns="columns" :data-source="data">
+    <a-table
+      :columns="columns"
+      :data-source="data"
+      :pagination="false"
+      rowKey="id"
+      :loading="loading"
+    >
       <span slot="action" slot-scope="text, record">
-        <a-tag color="blue" @click="update(record)">修改</a-tag>
         <a-tag color="red" @click="del(record)">删除</a-tag>
       </span>
     </a-table>
     <a-modal
-      v-model="visible"
+      :visible="visible"
       title="填写通知"
       @ok="submitReport"
       @cancel="hideReport"
     >
-      <a-form-model layout="inline" :model="form" ref="ruleForm" :rules="rules">
+      <a-form-model
+        :model="form"
+        :label-col="labelCol"
+        :wrapper-col="wrapperCol"
+        ref="ruleForm"
+        :rules="rules"
+      >
         <a-form-model-item label="主题" prop="theme">
           <a-input v-model="form.theme" type="text"> </a-input>
         </a-form-model-item>
@@ -27,13 +38,20 @@
         <a-form-model-item label="对象" prop="address">
           <a-cascader
             :options="options"
-            @change="onChange"
+            :load-data="loadData"
+            :change-on-select="true"
             v-model="form.address"
             size="large"
           />
         </a-form-model-item>
       </a-form-model>
     </a-modal>
+    <CustomPagination
+      @change="changePage"
+      :page="page"
+      :total="total"
+      :pageSize="pageSize"
+    />
   </div>
 </template>
 
@@ -43,92 +61,15 @@ import {
   MNOTICE_COLUMNS,
   MNOTICE_RULES,
 } from "@/columns/manager-columns/mNotice-columns";
-const data = [
-  {
-    key: "1",
-    time: "2021-1-10",
-    theme: "123231",
-    content: "今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家",
-  },
-  {
-    key: "2",
-    time: "2021-1-10",
-    theme: "123231",
-    content:
-      "今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家",
-  },
-  {
-    key: "3",
-    time: "2021-1-10",
-    theme: "123231",
-    content: "今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家",
-  },
-];
-const options = [
-  {
-    value: "18级",
-    label: "18级",
-    children: [
-      {
-        value: "传媒技术学院",
-        label: "传媒技术学院",
-        children: [
-          {
-            value: "软件工程",
-            label: "软件工程",
-          },
-          {
-            value: "广播电视工程",
-            label: "广播电视工程",
-          },
-        ],
-      },
-       {
-        value: "播音主持艺术学院",
-        label: "播音主持艺术学院",
-        children: [
-          {
-            value: "123213",
-            label: "123213",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    value: "17级",
-    label: "17级",
-    children: [
-      {
-        value: "传媒技术学院",
-        label: "传媒技术学院",
-        children: [
-          {
-            value: "软件工程",
-            label: "软件工程",
-          },
-        ],
-      },
-      {
-        value: "播音主持艺术学院",
-        label: "播音主持艺术学院",
-        children: [
-          {
-            value: "123123",
-            label: "123123",
-          },
-        ],
-      },
-    ],
-  },
-];
-
+import { NoticeApi, UserInfoApi } from "@/api";
+import CustomPagination from "@/components/CustomPagination";
+import moment from "moment";
 export default {
   name: "ManageNotice",
   data() {
     return {
       columns: MNOTICE_COLUMNS,
-      data: data,
+      data: [],
       visible: false,
       rules: MNOTICE_RULES,
       form: {
@@ -136,42 +77,133 @@ export default {
         content: "",
         address: undefined,
       },
-      options: options,
+      options: [],
+      page: 1,
+      total: 0,
+      pageSize: 5,
+      loading: false,
+      labelCol: { span: 4 },
+      wrapperCol: { span: 14 },
     };
   },
   components: {
     CustomPageHeader,
+    CustomPagination,
+  },
+  created() {
+    this.getAllNotice();
+    this.getAllGrade();
+    // this.getAllCollege();
   },
   methods: {
-    update(record) {
-      console.log(record);
+    async getAllGrade() {
+      const { data } = await NoticeApi.selectAllGrade();
+      const gradeData = data.data.map((item) => {
+        return {
+          leavel: 1,
+          value: item["id"],
+          label: item["grade"],
+          isLeaf: false,
+        };
+      });
+      this.options = gradeData;
     },
-    del(record) {
+
+    async getAllNotice() {
+      this.loading = true;
+      const { data } = await NoticeApi.selectAllNotice({
+        page: this.page,
+        size: this.pageSize,
+      });
+      if (data.code === 200) {
+        this.total = data.total;
+        this.data = data.data;
+        this.loading = false;
+      }
+    },
+    changePage(page, size) {
+      this.page = page;
+      this.pageSize = size;
+      this.getAllNotice();
+    },
+
+    async del(record) {
       console.log(record);
+      const { data } = await NoticeApi.deleteNoticeById({
+        id: record.id,
+      });
+      if (data.code === 200) {
+        this.$message.success(data.msg);
+        this.getAllNotice();
+      }
     },
     report() {
       this.visible = true;
     },
     hideReport() {
       this.visible = false;
-      this.form = {
-        theme: "",
-        content: "",
-      };
+      this.$refs.ruleForm.resetFields();
+    },
+    async loadData(selectedOptions) {
+      const targetOption = selectedOptions[selectedOptions.length - 1];
+      const children = await this.getOptions(targetOption);
+      targetOption.children = children;
+      this.options = [...this.options];
+    },
+    async getOptions(targetOption) {
+      console.log(targetOption);
+      let options = [];
+      if (targetOption.leavel === 1) {
+        const { data } = await UserInfoApi.selectAllCollege();
+        options = data.data.map((item) => {
+          return {
+            leavel: 2,
+            value: item["id"],
+            label: item["college"],
+            isLeaf: false,
+          };
+        });
+      } else if (targetOption.leavel === 2) {
+        const { data } = await UserInfoApi.selectMajorByCollegeId({
+          collegeId: targetOption.value,
+        });
+        options = data.data.map((item) => {
+          return {
+            leave: 3,
+            value: item["id"],
+            label: item["major"],
+            isLeaf: true,
+          };
+        });
+      } else {
+        options = [];
+      }
+
+      return options;
     },
     submitReport() {
-      this.$refs.ruleForm.validate((valid) => {
+      this.$refs.ruleForm.validate(async (valid) => {
         if (valid) {
-          alert("submit!");
           console.log(this.form);
+          const { data } = await NoticeApi.insertNotice({
+            date: moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
+            theme: this.form.theme,
+            content: this.form.content,
+            gradeId: this.form.address[0],
+            collegeId: this.form.address[1],
+            majorId: this.form.address[2],
+            tId: JSON.parse(sessionStorage.getItem("id")),
+          });
+          if (data.code === 200) {
+            this.visible = false;
+            this.$message.success(data.msg);
+            this.getAllNotice();
+            this.$refs.ruleForm.resetFields();
+          }
         } else {
-          console.log("error submit!!");
           return false;
         }
       });
-    },
-    onChange(value) {
-      console.log(value);
     },
   },
 };
