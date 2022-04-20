@@ -7,6 +7,11 @@ export default new Vuex.Store({
     state: {
         user: []
     },
+    getters:{
+        getUser(state){
+            return state.user
+        }
+    },
     mutations: {
         addUser(state, payload) {
             state.user.push(payload)

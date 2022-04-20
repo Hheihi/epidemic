@@ -1,64 +1,72 @@
 <template>
   <div>
-    <a-table :columns="columns" :data-source="data" @change="onChange">
-      <template slot="status" slot-scope="text, row">
-        <a-tag color="green" v-if="getStatus(row) === 'pass'">已读</a-tag>
-        <a-tag color="red" v-if="getStatus(row) === 'refuse'">未读</a-tag>
-      </template>
+    <a-table
+      :columns="columns"
+      :data-source="data"
+      rowKey="id"
+       :pagination="false"
+      :loading="loading"
+      @change="onChange"
+    >
       <span slot="action" slot-scope="text, record">
-        <a-tag color="blue" v-if="record.status === 2" @click="accept(record)"
-          >已读</a-tag
-        >
-        <a-tag color="red" v-if="record.status === 1" @click="reject(record)"
-          >未读</a-tag
-        >
         <a-tag color="green" @click="detail(record)">查看详情</a-tag>
       </span>
     </a-table>
     <a-modal v-model="visible" title="我的通知" @ok="hideModal">
-      <p>创建时间：{{ detailData.time }}</p>
-      <p>主题：{{ detailData.theme }}</p>
-      <p>内容{{ detailData.content }}</p>
-      <p>状态：{{ detailData.status > 1 ? "未读" : "已读" }}</p>
+      <p v-for="(item, index) in columns" :key="index">
+        {{ item.title }}:{{ detailData[item.key] }}
+      </p>
     </a-modal>
+    <CustomPagination
+      @change="changePage"
+      :page="page"
+      :total="total"
+      :pageSize="pageSize"
+    />
   </div>
 </template>
 <script>
-const data = [
-  {
-    key: "1",
-    time: "2021-1-10",
-    theme: "123231",
-    content: "今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家",
-    status: 1,
-  },
-  {
-    key: "2",
-    time: "2021-1-10",
-    theme: "123231",
-    content: "今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家",
-    status: 1,
-  },
-  {
-    key: "3",
-    time: "2021-1-10",
-    theme: "123231",
-    content: "今天放假噶就开始公开警告日哦我FGVHLSGFJKLSDGH监考老师给大家",
-    status: 1,
-  },
-];
 import { NOTICE_COLUMNS } from "@/columns/student-columns/notice-columns";
+import { NoticeApi } from "@/api";
+import CustomPagination from "@/components/CustomPagination";
+
 export default {
   name: "Notice",
   data() {
     return {
-      data,
+      data: [],
       columns: NOTICE_COLUMNS,
       visible: false,
       detailData: {},
+      page: 1,
+      total: 0,
+      pageSize: 5,
+      loading: false,
     };
   },
+  components: {
+    CustomPagination,
+  },
+  computed: {},
+  created() {
+    this.getNoticeById();
+  },
   methods: {
+    async getNoticeById() {
+      this.loading = true;
+      const { data } = await NoticeApi.selectNoticeById({
+        sid: JSON.parse(sessionStorage.getItem("id")),
+        page: this.page,
+        size: this.pageSize,
+      });
+      console.log(data);
+      if (data.code === 200) {
+        this.total = data.total
+        console.log(this.total);
+        this.data = data.data;
+        this.loading = false;
+      }
+    },
     onChange(pagination, filters, sorter) {
       console.log("params", pagination, filters, sorter);
     },
@@ -92,6 +100,11 @@ export default {
     },
     hideModal() {
       this.visible = false;
+    },
+    changePage(page, size) {
+      this.page = page;
+      this.pageSize = size;
+      this.getNoticeById();
     },
   },
 };

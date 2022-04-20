@@ -26,6 +26,7 @@
   </div>
 </template>
 <script>
+import { LoginApi } from "@/api/index";
 export default {
   name: "Login",
   components: {},
@@ -38,6 +39,7 @@ export default {
         pwd: "",
         type: "",
       },
+      type: undefined,
       rules: {
         name: [
           {
@@ -65,12 +67,19 @@ export default {
   },
   methods: {
     onSubmit() {
-      this.$refs.ruleForm.validate((valid) => {
+      this.$refs.ruleForm.validate(async (valid) => {
         if (valid) {
-          this.$router.push("/home");
-          this.$store.dispatch("addUser", this.form);
+          const { data } = await LoginApi.login(this.form);
+          console.log(data.data);
+          if (data.code === 200) {
+            localStorage.setItem("token", data.token);
+            sessionStorage.setItem("id", data.data.sid);
+            sessionStorage.setItem("type", data.data.identity);
+            this.type = data.data.identity;
+            this.$store.dispatch("addUser", data.data);
+            this.$router.push("/home/myinfo");
+          }
         } else {
-          console.log("error submit!!");
           return false;
         }
       });

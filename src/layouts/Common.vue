@@ -7,7 +7,7 @@
         </div>
         <div class="avater">
           <a-dropdown placement="bottomCenter">
-            <a-avatar size="large" icon="user" />
+            <a-avatar size="large" :src="getAvater" icon="user" />
             <a-menu slot="overlay" @click="meauClick">
               <a-menu-item>
                 <span
@@ -16,7 +16,10 @@
                   }}</a-tag></span
                 >
               </a-menu-item>
-              <a-menu-item key="/home/myinfo" v-if="type === '1' || type === '2'">
+              <a-menu-item
+                key="/home/myinfo"
+                v-if="type === '1' || type === '2'"
+              >
                 <span>个人中心</span>
               </a-menu-item>
               <a-menu-item>
@@ -33,10 +36,14 @@
           <a-menu
             mode="inline"
             theme="light"
-            :default-selected-keys="['/home/notice']"
+            :default-selected-keys="['/home/myinfo']"
             style="height: 100%"
             @click="meauClick"
           >
+            <a-menu-item key="/home/Home">
+              <a-icon type="message" />
+              <span class="nav-text">首页</span>
+            </a-menu-item>
             <a-menu-item key="/home/notice" v-if="type === '1'">
               <a-icon type="message" />
               <span class="nav-text">我的通知</span>
@@ -49,7 +56,7 @@
               <a-icon type="edit" />
               <span class="nav-text">我要请假</span>
             </a-menu-item>
-            <a-menu-item key="/home/myinfo" v-if="type === '1' || type === '2'">
+            <a-menu-item key="/home/myinfo">
               <a-icon type="user" />
               <span class="nav-text">个人中心</span>
             </a-menu-item>
@@ -72,6 +79,10 @@
               <a-icon type="setting" />
               <span class="nav-text">请假管理</span>
             </a-menu-item>
+            <a-menu-item key="/home/mHealth" v-if="type === '2'">
+              <a-icon type="setting" />
+              <span class="nav-text">健康管理</span>
+            </a-menu-item>
           </a-menu>
         </a-layout-sider>
         <a-layout-content :style="{ padding: '0 24px', minHeight: '800px' }">
@@ -85,29 +96,45 @@
   </a-layout>
 </template>
 <script>
+import { UserInfoApi } from "@/api";
+
 export default {
   data() {
-    return {};
+    return {
+      userInfo: [],
+    };
   },
   created() {
+    this.getUserInfo();
   },
   computed: {
     type() {
-      return this.$store.state.user[0].type;
+      return sessionStorage.getItem("type");
     },
     identity() {
-      const type =  this.$store.state.user[0].type;
+      const type = sessionStorage.getItem("type");
       const id = {
-        1:'学生',
-        2:"教师",
-        3:"管理员"
-      }
-      return id[type]
+        1: "学生",
+        2: "教师",
+        3: "管理员",
+      };
+      return id[type];
+    },
+    getAvater() {
+      return this.userInfo[0]?.avater;
     },
   },
   methods: {
     meauClick({ key }) {
       this.$router.push(key);
+    },
+    async getUserInfo() {
+      const { data } = await UserInfoApi.getUserInfo({
+        id: JSON.parse(sessionStorage.getItem("id")),
+      });
+      if (data.code === 200) {
+        this.userInfo = data.data;
+      }
     },
   },
 };
